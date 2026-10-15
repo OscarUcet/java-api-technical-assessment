@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: countries
+      POSTGRES_USER: ${DB_USERNAME:-countries}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-countries_local}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - countries-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build: .
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      DB_URL: jdbc:postgresql://postgres:5432/countries
+      DB_USERNAME: ${DB_USERNAME:-countries}
+      DB_PASSWORD: ${DB_PASSWORD:-countries_local}
+      WORLD_BANK_BASE_URL: ${WORLD_BANK_BASE_URL:-https://api.worldbank.org/v2}
+      WORLD_BANK_CONNECT_TIMEOUT: ${WORLD_BANK_CONNECT_TIMEOUT:-3s}
+      WORLD_BANK_READ_TIMEOUT: ${WORLD_BANK_READ_TIMEOUT:-5s}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  countries-data:
